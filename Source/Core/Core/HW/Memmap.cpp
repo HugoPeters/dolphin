@@ -174,6 +174,8 @@ static MemoryView views[] =
 };
 static const int num_views = sizeof(views) / sizeof(MemoryView);
 
+bool first_init = true;
+
 void Init()
 {
 	bool wii = SConfig::GetInstance().bWii;
@@ -205,8 +207,16 @@ void Init()
 	INFO_LOG(MEMMAP, "Memory system initialized. RAM at %p", m_pRAM);
 	m_IsInitialized = true;
 
-	terrible_debug_translation.resize(RAM_SIZE, 0x0);
-	terrible_file_alloc_cache.push_back(MemFileInfo());
+	if (first_init)
+	{
+		terrible_debug_translation.resize(RAM_SIZE, 0x0);
+		terrible_file_alloc_cache.push_back(MemFileInfo());
+		first_init = false;
+	}
+	else
+	{
+		ResetTerribleMapping();
+	}
 }
 
 void DoState(PointerWrap &p)
@@ -403,6 +413,15 @@ void CheckTerribleMapping(u32 address)
 		WARN_LOG(FILEMON, "BEGIN READ FROM %s @ 0x%08x", file->m_FullPath.c_str(), relAddr);
 		cur_file = cache;
 	}
+}
+
+void ResetTerribleMapping()
+{
+	cur_file = nullptr;
+	terrible_file_alloc_cache.clear();
+
+	for (u32 i = 0; i < RAM_SIZE; ++i)
+		terrible_debug_translation[i] = 0x0;
 }
 
 u8 Read_U8(u32 address)

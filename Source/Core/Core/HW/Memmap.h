@@ -108,6 +108,7 @@ void Write_U64(const u64 var, const u32 address);
 void Write_U32_Swap(const u32 var, const u32 address);
 void Write_U64_Swap(const u64 var, const u32 address);
 void CheckTerribleMapping(u32 address);
+void ResetTerribleMapping();
 
 // Templated functions for byteswapped copies.
 template <typename T>
