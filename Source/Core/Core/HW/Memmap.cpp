@@ -210,13 +210,10 @@ void Init()
 	if (first_init)
 	{
 		terrible_debug_translation.resize(RAM_SIZE, 0x0);
-		terrible_file_alloc_cache.push_back(MemFileInfo());
 		first_init = false;
 	}
-	else
-	{
-		ResetTerribleMapping();
-	}
+
+	ResetTerribleMapping();
 }
 
 void DoState(PointerWrap &p)
@@ -419,6 +416,7 @@ void ResetTerribleMapping()
 {
 	cur_file = nullptr;
 	terrible_file_alloc_cache.clear();
+	terrible_file_alloc_cache.push_back(MemFileInfo());
 
 	for (u32 i = 0; i < RAM_SIZE; ++i)
 		terrible_debug_translation[i] = 0x0;
