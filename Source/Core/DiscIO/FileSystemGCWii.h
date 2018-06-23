@@ -32,6 +32,7 @@ public:
 	bool ExportDOL(const std::string& _rExportFolder) const override;
 	u64 GetBootDOLOffset() const override;
 	u32 GetBootDOLSize(u64 dol_offset) const override;
+	const SFileInfo* FindFileInfo(u64 _Address) override;
 
 private:
 	bool m_Initialized;

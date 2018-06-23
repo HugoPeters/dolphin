@@ -32,6 +32,8 @@
 #include "Core/PowerPC/JitCommon/JitBase.h"
 #include "VideoCommon/CommandProcessor.h"
 #include "VideoCommon/PixelEngine.h"
+#include "DiscIO/FileMonitor.h"
+#include "DiscIO/Filesystem.h"
 
 namespace Memory
 {
@@ -60,6 +62,10 @@ u8* m_pFakeVMEM;
 
 // MMIO mapping object.
 std::unique_ptr<MMIO::Mapping> mmio_mapping;
+
+std::vector<u32> terrible_debug_translation;
+std::vector<MemFileInfo> terrible_file_alloc_cache;
+
 
 static std::unique_ptr<MMIO::Mapping> InitMMIO()
 {
@@ -198,6 +204,9 @@ void Init()
 
 	INFO_LOG(MEMMAP, "Memory system initialized. RAM at %p", m_pRAM);
 	m_IsInitialized = true;
+
+	terrible_debug_translation.resize(RAM_SIZE, 0x0);
+	terrible_file_alloc_cache.push_back(MemFileInfo());
 }
 
 void DoState(PointerWrap &p)
@@ -286,6 +295,44 @@ void CopyToEmu(u32 address, const void* data, size_t size)
 		PanicAlert("Invalid range in CopyToEmu. %zx bytes to 0x%08x", size, address);
 		return;
 	}
+
+	memcpy(pointer, data, size);
+}
+
+void CopyToEmuFile(const DiscIO::SFileInfo* file, u64 dvd_offset, u32 address, const void* data, size_t size)
+{
+	if (size == 0)
+		return;
+
+	void* pointer = GetPointerForRange(address, size);
+	if (!pointer)
+	{
+		PanicAlert("Invalid range in CopyToEmu. %zx bytes to 0x%08x", size, address);
+		return;
+	}
+	
+	if (file)
+	{
+		WARN_LOG(FILEMON, "CopyToEmuFile: %s, addr=0x%x, ptr=%p, size=%i"
+			, file->m_FullPath.c_str(), address, pointer, size);
+	}
+
+	if (file)
+	{
+		MemFileInfo info;
+		info.mRAMOffset = address;
+		info.mFileOffset = dvd_offset - file->m_Offset;
+		info.mFile = file;
+
+		u32 cache_index = static_cast<u32>(terrible_file_alloc_cache.size());
+		terrible_file_alloc_cache.push_back(info);
+
+		for (u32 cur = address; cur < address + size; ++cur)
+		{
+			terrible_debug_translation[cur] = cache_index;
+		}
+	}
+
 	memcpy(pointer, data, size);
 }
 
@@ -339,23 +386,46 @@ u8* GetPointer(u32 address)
 	return nullptr;
 }
 
+const MemFileInfo* cur_file;
+
+void CheckTerribleMapping(u32 address)
+{
+	u32 cacheIndex = terrible_debug_translation[address];
+
+	const MemFileInfo* cache = &terrible_file_alloc_cache[cacheIndex];
+
+	if (cache->mFile && cache->mFile->m_FileSize > 0 && cur_file != cache)
+	{
+		const DiscIO::SFileInfo* file = cache->mFile;
+
+		u64 relAddr = (address - cache->mRAMOffset) + cache->mFileOffset;
+
+		WARN_LOG(FILEMON, "BEGIN READ FROM %s @ 0x%08x", file->m_FullPath.c_str(), relAddr);
+		cur_file = cache;
+	}
+}
+
 u8 Read_U8(u32 address)
 {
+	CheckTerribleMapping(address);
 	return *GetPointer(address);
 }
 
 u16 Read_U16(u32 address)
 {
+	CheckTerribleMapping(address);
 	return Common::swap16(GetPointer(address));
 }
 
 u32 Read_U32(u32 address)
 {
+	CheckTerribleMapping(address);
 	return Common::swap32(GetPointer(address));
 }
 
 u64 Read_U64(u32 address)
 {
+	CheckTerribleMapping(address);
 	return Common::swap64(GetPointer(address));
 }
 

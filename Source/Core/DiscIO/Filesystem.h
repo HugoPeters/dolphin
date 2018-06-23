@@ -51,6 +51,7 @@ public:
 	virtual const std::string GetFileName(u64 _Address) = 0;
 	virtual u64 GetBootDOLOffset() const = 0;
 	virtual u32 GetBootDOLSize(u64 dol_offset) const = 0;
+	virtual const SFileInfo* FindFileInfo(u64 _Address) = 0;
 
 protected:
 	const IVolume *m_rVolume;

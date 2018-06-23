@@ -108,6 +108,39 @@ void CheckFile(const std::string& file, u64 size)
 }
 
 
+void CheckFile(const DiscIO::SFileInfo* info, u64 offset, u64 _Length, u8* _pBuffer)
+{
+	// Don't do anything if the log is unselected
+	if (!LogManager::GetInstance()->IsEnabled(LogTypes::FILEMON, LogTypes::LWARNING))
+		return;
+	// Do nothing if we found the same file again
+	//if (CurrentFile == file)
+	//	return;
+
+	u64 size = info->m_FileSize;
+
+	if (size > 0)
+		size = (size / 1000);
+
+	const std::string& fileName = info->m_FullPath;
+
+	std::string str = StringFromFormat("%s (%s kB), discOffset=0x%x, readOffset=0x%x, numBytes=0x%x, ram=%p"
+		, fileName.c_str(), ThousandSeparate(size, 7).c_str(), info->m_Offset, offset - info->m_Offset
+		, _Length, _pBuffer);
+
+	if (IsSoundFile(fileName))
+	{
+		INFO_LOG(FILEMON, "%s", str.c_str());
+	}
+	else
+	{
+		WARN_LOG(FILEMON, "%s", str.c_str());
+	}
+
+	// Update the current file
+	CurrentFile = fileName;
+}
+
 // Find the filename
 void FindFilename(u64 offset)
 {
@@ -138,6 +171,35 @@ void FindFilename(u64 offset)
 		return;
 
 	CheckFile(filename, s_filesystem->GetFileSize(filename));
+}
+
+const DiscIO::SFileInfo* FindFileInfo(u64 offset, u64 _Length, u8* _pBuffer)
+{
+	// Don't do anything if a game is not running
+	if (Core::GetState() != Core::CORE_RUN)
+		return nullptr;
+
+	// Or if we don't have file access
+	if (!FileAccess)
+		return nullptr;
+
+	if (!s_filesystem || ISOFile != SConfig::GetInstance().m_LastFilename)
+	{
+		FileAccess = false;
+		ReadFileSystem(SConfig::GetInstance().m_LastFilename);
+		ISOFile = SConfig::GetInstance().m_LastFilename;
+		INFO_LOG(FILEMON, "Opening '%s'", ISOFile.c_str());
+		return nullptr;
+	}
+
+	const DiscIO::SFileInfo* info = s_filesystem->FindFileInfo(offset);
+
+	if (!info)
+		return nullptr;
+
+	CheckFile(info, offset, _Length, _pBuffer);
+
+	return info;
 }
 
 void Close()

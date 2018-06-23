@@ -248,6 +248,23 @@ const SFileInfo* CFileSystemGCWii::FindFileInfo(const std::string& _rFullPath)
 	return nullptr;
 }
 
+const DiscIO::SFileInfo* CFileSystemGCWii::FindFileInfo(u64 _Address)
+{
+	if (!m_Initialized)
+		InitFileSystem();
+
+	for (auto& fileInfo : m_FileInfoVector)
+	{
+		if ((fileInfo.m_Offset <= _Address) &&
+			((fileInfo.m_Offset + fileInfo.m_FileSize) > _Address))
+		{
+			return &fileInfo;
+		}
+	}
+
+	return nullptr;
+}
+
 bool CFileSystemGCWii::DetectFileSystem()
 {
 	u32 magic_bytes;

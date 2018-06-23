@@ -139,7 +139,10 @@ __forceinline static T ReadFromHardware(const u32 em_address)
 			// Handle RAM; the masking intentionally discards bits (essentially creating
 			// mirrors of memory).
 			// TODO: Only the first REALRAM_SIZE is supposed to be backed by actual memory.
-			return bswap((*(const T*)&Memory::m_pRAM[em_address & Memory::RAM_MASK]));
+			u32 real = em_address & Memory::RAM_MASK;
+			Memory::CheckTerribleMapping(real);
+
+			return bswap((*(const T*)&Memory::m_pRAM[real]));
 		}
 		if (Memory::m_pEXRAM && (segment == 0x9 || segment == 0xD) && (em_address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
 		{
@@ -170,10 +173,12 @@ __forceinline static T ReadFromHardware(const u32 em_address)
 		}
 		if (segment == 0x0)
 		{
+			u32 real = em_address & Memory::RAM_MASK;
+			Memory::CheckTerribleMapping(real);
 			// Handle RAM; the masking intentionally discards bits (essentially creating
 			// mirrors of memory).
 			// TODO: Only the first REALRAM_SIZE is supposed to be backed by actual memory.
-			return bswap((*(const T*)&Memory::m_pRAM[em_address & Memory::RAM_MASK]));
+			return bswap((*(const T*)&Memory::m_pRAM[real]));
 		}
 		if (Memory::m_pEXRAM && segment == 0x1 && (em_address & 0x0FFFFFFF) < Memory::EXRAM_SIZE)
 		{

@@ -38,7 +38,7 @@ bool CVolumeGC::Read(u64 _Offset, u64 _Length, u8* _pBuffer, bool decrypt) const
 	if (m_pReader == nullptr)
 		return false;
 
-	FileMon::FindFilename(_Offset);
+	//FileMon::FindFileInfo(_Offset, _Length, _pBuffer);
 
 	return m_pReader->Read(_Offset, _Length, _pBuffer);
 }

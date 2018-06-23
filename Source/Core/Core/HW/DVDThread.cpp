@@ -24,6 +24,7 @@
 #include "Core/HW/SystemTimers.h"
 
 #include "DiscIO/Volume.h"
+#include "DiscIO/FileMonitor.h"
 
 namespace DVDThread
 {
@@ -54,6 +55,9 @@ static bool s_reply_to_ios;
 // The following time variables are only used for logging
 static u64 s_realtime_started_us;
 static u64 s_realtime_done_us;
+
+// quick way of knowing which file is being read
+static const DiscIO::SFileInfo* s_current_file;
 
 void Start()
 {
@@ -124,6 +128,8 @@ void StartRead(u64 dvd_offset, u32 output_address, u32 length, bool decrypt,
 	s_time_read_started = CoreTiming::GetTicks();
 	s_realtime_started_us = Common::Timer::GetTimeUs();
 
+	s_current_file = FileMon::FindFileInfo(dvd_offset, length, 0);
+
 	s_dvd_thread_start_working.Set();
 
 	CoreTiming::ScheduleEvent(ticks_until_completion, s_finish_read);
@@ -140,7 +146,7 @@ static void FinishRead(u64 userdata, s64 cycles_late)
 	          (CoreTiming::GetTicks() - s_time_read_started) / (SystemTimers::GetTicksPerSecond() / 1000 / 1000));
 
 	if (s_dvd_success)
-		Memory::CopyToEmu(s_output_address, s_dvd_buffer.data(), s_length);
+		Memory::CopyToEmuFile(s_current_file, s_dvd_offset, s_output_address, s_dvd_buffer.data(), s_length);
 	else
 		PanicAlertT("The disc could not be read (at 0x%" PRIx64 " - 0x%" PRIx64 ").",
 		            s_dvd_offset, s_dvd_offset + s_length);
@@ -157,6 +163,8 @@ static void FinishRead(u64 userdata, s64 cycles_late)
 static void DVDThread()
 {
 	Common::SetCurrentThreadName("DVD thread");
+
+	s_current_file = nullptr;
 
 	while (true)
 	{
