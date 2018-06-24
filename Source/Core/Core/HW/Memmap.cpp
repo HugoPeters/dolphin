@@ -34,6 +34,7 @@
 #include "VideoCommon/PixelEngine.h"
 #include "DiscIO/FileMonitor.h"
 #include "DiscIO/Filesystem.h"
+#include "Core/HW/CPU.h"
 
 namespace Memory
 {
@@ -326,17 +327,44 @@ void CopyToEmuFile(const DiscIO::SFileInfo* file, u64 dvd_offset, u32 address, c
 
 	if (file)
 	{
-		MemFileInfo info;
-		info.mRAMOffset = address;
-		info.mFileOffset = dvd_offset - file->m_Offset;
-		info.mFile = file;
+		bool shouldCache = true;
 
-		u32 cache_index = static_cast<u32>(terrible_file_alloc_cache.size());
-		terrible_file_alloc_cache.push_back(info);
-
-		for (u32 cur = address; cur < address + size; ++cur)
+		if (file->m_FullPath[0] == 'a')
 		{
-			terrible_debug_translation[cur] = cache_index;
+			if (file->m_FullPath[1] == 'u')
+			{
+				if (file->m_FullPath[2] == 'd')
+				{
+					if (file->m_FullPath[3] == 'i')
+					{
+						if (file->m_FullPath[4] == 'o')
+						{
+							shouldCache = false;
+						}
+					}
+				}
+			}
+		}
+
+		if (file->m_FullPath == "OBJINDEX.bin")
+		{
+			CPU::Break();
+		}
+
+		if (shouldCache)
+		{
+			MemFileInfo info;
+			info.mRAMOffset = address;
+			info.mFileOffset = dvd_offset - file->m_Offset;
+			info.mFile = file;
+
+			u32 cache_index = static_cast<u32>(terrible_file_alloc_cache.size());
+			terrible_file_alloc_cache.push_back(info);
+
+			for (u32 cur = address; cur < address + size; ++cur)
+			{
+				terrible_debug_translation[cur] = cache_index;
+			}
 		}
 	}
 
